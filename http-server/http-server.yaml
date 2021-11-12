@@ -34,6 +34,7 @@ metadata:
     app: http-server
   namespace: lab-infra
 spec:
+  replicas: 3
   selector:
     matchLabels:
       app: http-server # has to match .spec.template.metadata.labels
