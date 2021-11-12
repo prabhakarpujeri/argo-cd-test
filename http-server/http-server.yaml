@@ -1,0 +1,79 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: http-server
+  labels:
+    app: http-server
+spec:
+  ports:
+    - port: 80
+  selector:
+    app: http-server
+  clusterIP: None
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: http-server-pvc
+  namespace: lab-infra
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 200Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: http-server
+  labels:
+    app: http-server
+  namespace: lab-infra
+spec:
+  selector:
+    matchLabels:
+      app: http-server # has to match .spec.template.metadata.labels
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: http-server
+    spec:
+      restartPolicy: Always
+      containers:
+      - image: registry.oslab.amer.dell.com/lab-infra/http-server:0.0.1
+        name: httpd
+        ports:
+        - containerPort: 80
+          name: http
+        volumeMounts:
+        - name: httpd-volume
+          mountPath: /usr/local/apache2/htdocs/
+      volumes:
+      - name: httpd-volume
+        persistentVolumeClaim:
+          claimName: http-server-pvc
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: http-server
+  namespace: lab-infra
+spec:
+  rules:
+  - host: builds.oslab.amer.dell.com
+    http:
+      paths:
+      - pathType: Prefix
+        path: /
+        backend:
+          service:
+            name: http-server
+            port:
+              number: 80
